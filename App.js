@@ -571,6 +571,19 @@ export default function App() {
     }
   }
 
+  async function refreshAuthSession() {
+    if (!authSession?.refreshToken) return null;
+    try {
+      const refreshed = await refreshStudent(authSession.refreshToken);
+      const nextSession = { ...authSession, ...refreshed };
+      setAuthSession(nextSession);
+      await AsyncStorage.setItem(AUTH_KEY, JSON.stringify(nextSession));
+      return nextSession.accessToken;
+    } catch {
+      return null;
+    }
+  }
+
   async function returnToLogin() {
     const nextProfile = { ...profile, onboardingCompleted: false };
     setProfile(nextProfile);
@@ -827,6 +840,7 @@ export default function App() {
         <BillingScreen
           profile={profile}
           authSession={authSession}
+          onAuthRefresh={refreshAuthSession}
           onBack={() => setScreen("home")}
         />
       )}
@@ -4297,14 +4311,14 @@ function DictionaryEntryScreen({ entry, onBack }) {
   );
 }
 
-function BillingScreen({ profile, authSession, onBack }) {
+function BillingScreen({ profile, authSession, onAuthRefresh, onBack }) {
   const [subscription, setSubscription] = useState({ planId: "free", status: "cancelled" });
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(true);
   const [working, setWorking] = useState(false);
   const [error, setError] = useState("");
   const [checkoutNotice, setCheckoutNotice] = useState("");
-  const [premiumPlan, setPremiumPlan] = useState(null);
+  const [plans, setPlans] = useState([]);
 
   const token = authSession?.accessToken;
   const student = authSession?.student || {
@@ -4312,6 +4326,17 @@ function BillingScreen({ profile, authSession, onBack }) {
     name: profile?.displayName,
     email: profile?.email,
   };
+
+  async function withFreshToken(action) {
+    try {
+      return await action(authSession?.accessToken);
+    } catch (requestError) {
+      if (requestError.status !== 401 || !onAuthRefresh) throw requestError;
+      const refreshedToken = await onAuthRefresh();
+      if (!refreshedToken) throw requestError;
+      return action(refreshedToken);
+    }
+  }
 
   async function loadBilling() {
     if (!token) {
@@ -4322,14 +4347,14 @@ function BillingScreen({ profile, authSession, onBack }) {
     setLoading(true);
     setError("");
     try {
-      const [statusResponse, historyResponse, catalogResponse] = await Promise.all([
-        getSubscriptionStatus(token),
-        getBillingHistory(token),
+      const [statusResponse, historyResponse, catalogResponse] = await withFreshToken((currentToken) => Promise.all([
+        getSubscriptionStatus(currentToken),
+        getBillingHistory(currentToken),
         getStudyCodeCatalog(),
-      ]);
+      ]));
       setSubscription(statusResponse.subscription || { planId: "free", status: "cancelled" });
       setHistory(historyResponse.history || []);
-      setPremiumPlan((catalogResponse.plans || []).find((plan) => plan.slug === "premium") || null);
+      setPlans(catalogResponse.plans || []);
     } catch (requestError) {
       setError(requestError.message || "O serviço de pagamentos ainda não está configurado.");
     } finally {
@@ -4351,12 +4376,12 @@ function BillingScreen({ profile, authSession, onBack }) {
     return () => listener.remove();
   }, [token]);
 
-  async function subscribe() {
+  async function subscribe(planSlug = "premium") {
     if (!token || working) return;
     setWorking(true);
     setError("");
     try {
-      const checkout = await createPremiumCheckout({ token, student });
+      const checkout = await withFreshToken((currentToken) => createPremiumCheckout({ token: currentToken, student, planSlug }));
       if (!checkout.checkoutUrl) throw new Error("A Stripe não retornou uma página de checkout.");
       await Linking.openURL(checkout.checkoutUrl);
     } catch (requestError) {
@@ -4371,7 +4396,7 @@ function BillingScreen({ profile, authSession, onBack }) {
     setWorking(true);
     setError("");
     try {
-      await cancelPremiumSubscription(token);
+      await withFreshToken((currentToken) => cancelPremiumSubscription(currentToken));
       await loadBilling();
     } catch (requestError) {
       setError(requestError.message || "Não foi possível cancelar a assinatura.");
@@ -4380,7 +4405,9 @@ function BillingScreen({ profile, authSession, onBack }) {
     }
   }
 
-  const isPremium = subscription.planId === "premium" && subscription.status === "active";
+  const activePlan = plans.find((plan) => plan.slug === subscription.planId);
+  const paidPlans = plans.filter((plan) => Number(plan.monthly_price) > 0);
+  const isPremium = subscription.status === "active" && subscription.planId !== "free";
   const statusLabels = {
     pending: "Pagamento pendente",
     active: "Assinatura ativa",
@@ -4405,7 +4432,7 @@ function BillingScreen({ profile, authSession, onBack }) {
         ) : (
           <View style={styles.billingStatusCard}>
             <Text style={styles.billingSectionLabel}>STATUS ATUAL</Text>
-            <Text style={styles.billingStatusTitle}>{isPremium ? "Premium" : "Free"}</Text>
+            <Text style={styles.billingStatusTitle}>{activePlan?.name || (isPremium ? subscription.planId : "Free")}</Text>
             <Text style={styles.billingStatusText}>{statusLabel}</Text>
             {!!subscription.nextBillingAt && <Text style={styles.billingMuted}>Próxima cobrança: {new Date(subscription.nextBillingAt).toLocaleDateString("pt-BR")}</Text>}
           </View>
@@ -4418,15 +4445,30 @@ function BillingScreen({ profile, authSession, onBack }) {
             <Text style={styles.billingPlanPrice}>R$ 0,00<Text style={styles.billingPlanPeriod}>/mês</Text></Text>
             <Text style={styles.billingPlanText}>HTML, CSS e JavaScript básico, desafios e revisões essenciais.</Text>
           </View>
-          <LinearGradient colors={gradients.primaryButton} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.billingPlanPremium}>
+          {false && <LinearGradient colors={gradients.primaryButton} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.billingPlanPremium}>
             <Text style={styles.billingPlanKickerLight}>RECOMENDADO</Text>
             <Text style={styles.billingPlanTitleLight}>Premium</Text>
-            <Text style={styles.billingPlanPriceLightDynamic}>{premiumPlan ? `R$ ${Number(premiumPlan.monthly_price).toFixed(2).replace(".", ",")}` : "Consultando..."}<Text style={styles.billingPlanPeriodLight}>/mÃªs</Text></Text>
+            <Text style={styles.billingPlanPriceLightDynamic}>R$ 0,00<Text style={styles.billingPlanPeriodLight}>/mês</Text></Text>
             <Text style={styles.billingPlanPriceLight}>R$ 29,90<Text style={styles.billingPlanPeriodLight}>/mês</Text></Text>
             <Text style={styles.billingPlanTextLight}>Todas as trilhas, projetos, certificados e mais acesso ao tutor.</Text>
             {!isPremium && <Pressable onPress={subscribe} disabled={working} style={({ pressed }) => [styles.billingButton, pressed && styles.pressed]}><Text style={styles.billingButtonText}>{working ? "Abrindo checkout..." : "Assinar Premium"}</Text></Pressable>}
             {isPremium && <Pressable onPress={cancel} disabled={working} style={({ pressed }) => [styles.billingCancelButton, pressed && styles.pressed]}><Text style={styles.billingCancelButtonText}>{working ? "Cancelando..." : "Cancelar assinatura"}</Text></Pressable>}
-          </LinearGradient>
+          </LinearGradient>}
+          {paidPlans.map((plan, index) => {
+            const planFeatures = typeof plan.features === "object" && plan.features ? plan.features : {};
+            const benefits = Array.isArray(planFeatures.benefits) ? planFeatures.benefits : [];
+            const isLifetime = planFeatures.billingType === "lifetime";
+            const currentPlan = subscription.planId === plan.slug && subscription.status === "active";
+            return <LinearGradient key={plan.id || plan.slug} colors={index === 0 ? gradients.primaryButton : gradients.brand} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.billingPlanPremium}>
+              <Text style={styles.billingPlanKickerLight}>{index === 0 ? "RECOMENDADO" : "PLANO STUDYCODE"}</Text>
+              <Text style={styles.billingPlanTitleLight}>{plan.name}</Text>
+              <Text style={styles.billingPlanPriceLightDynamic}>R$ {Number(plan.monthly_price).toFixed(2).replace(".", ",")}<Text style={styles.billingPlanPeriodLight}>{isLifetime ? " pagamento único" : "/mês"}</Text></Text>
+              <Text style={styles.billingPlanTextLight}>{plan.description || benefits.join(" • ") || "Acesso aos recursos disponíveis neste plano."}</Text>
+              {!currentPlan && <Pressable onPress={() => subscribe(plan.slug)} disabled={working} style={({ pressed }) => [styles.billingButton, pressed && styles.pressed]}><Text style={styles.billingButtonText}>{working ? "Abrindo checkout..." : `Assinar ${plan.name}`}</Text></Pressable>}
+              {currentPlan && <Pressable onPress={cancel} disabled={working} style={({ pressed }) => [styles.billingCancelButton, pressed && styles.pressed]}><Text style={styles.billingCancelButtonText}>{working ? "Cancelando..." : "Cancelar assinatura"}</Text></Pressable>}
+            </LinearGradient>;
+          })}
+          {paidPlans.length === 0 && <View style={styles.billingPlanCard}><Text style={styles.billingPlanText}>Nenhum plano pago disponível no momento.</Text></View>}
         </View>
 
         {error ? <View style={styles.billingError}><Text style={styles.billingErrorText}>{error}</Text></View> : null}

@@ -27,12 +27,13 @@ export async function getStudyCodeCatalog() {
   return request("/api/studycode/catalog?productKey=studycode");
 }
 
-export function createPremiumCheckout({ token, student, tenantId }) {
+export function createPremiumCheckout({ token, student, tenantId, planSlug = "premium" }) {
   return request("/api/studycode/billing/checkout-session", {
     method: "POST",
     token,
     body: {
       tenant_id: tenantId || null,
+      plan_slug: planSlug,
       student: {
         id: student?.id,
         name: student?.name,
