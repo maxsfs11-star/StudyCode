@@ -50,6 +50,7 @@ import { loginStudent, registerStudent } from "./src/services/studycodeApi";
 import {
   cancelPremiumSubscription,
   createPremiumCheckout,
+  getStudyCodeCatalog,
   getBillingHistory,
   getSubscriptionStatus,
 } from "./src/services/studycodeBilling";
@@ -4303,6 +4304,7 @@ function BillingScreen({ profile, authSession, onBack }) {
   const [working, setWorking] = useState(false);
   const [error, setError] = useState("");
   const [checkoutNotice, setCheckoutNotice] = useState("");
+  const [premiumPlan, setPremiumPlan] = useState(null);
 
   const token = authSession?.accessToken;
   const student = authSession?.student || {
@@ -4320,12 +4322,14 @@ function BillingScreen({ profile, authSession, onBack }) {
     setLoading(true);
     setError("");
     try {
-      const [statusResponse, historyResponse] = await Promise.all([
+      const [statusResponse, historyResponse, catalogResponse] = await Promise.all([
         getSubscriptionStatus(token),
         getBillingHistory(token),
+        getStudyCodeCatalog(),
       ]);
       setSubscription(statusResponse.subscription || { planId: "free", status: "cancelled" });
       setHistory(historyResponse.history || []);
+      setPremiumPlan((catalogResponse.plans || []).find((plan) => plan.slug === "premium") || null);
     } catch (requestError) {
       setError(requestError.message || "O serviço de pagamentos ainda não está configurado.");
     } finally {
@@ -4417,6 +4421,7 @@ function BillingScreen({ profile, authSession, onBack }) {
           <LinearGradient colors={gradients.primaryButton} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.billingPlanPremium}>
             <Text style={styles.billingPlanKickerLight}>RECOMENDADO</Text>
             <Text style={styles.billingPlanTitleLight}>Premium</Text>
+            <Text style={styles.billingPlanPriceLightDynamic}>{premiumPlan ? `R$ ${Number(premiumPlan.monthly_price).toFixed(2).replace(".", ",")}` : "Consultando..."}<Text style={styles.billingPlanPeriodLight}>/mÃªs</Text></Text>
             <Text style={styles.billingPlanPriceLight}>R$ 29,90<Text style={styles.billingPlanPeriodLight}>/mês</Text></Text>
             <Text style={styles.billingPlanTextLight}>Todas as trilhas, projetos, certificados e mais acesso ao tutor.</Text>
             {!isPremium && <Pressable onPress={subscribe} disabled={working} style={({ pressed }) => [styles.billingButton, pressed && styles.pressed]}><Text style={styles.billingButtonText}>{working ? "Abrindo checkout..." : "Assinar Premium"}</Text></Pressable>}
@@ -12102,6 +12107,13 @@ const styles = StyleSheet.create(
       marginTop: 9,
     },
     billingPlanPriceLight: {
+      color: colors.white,
+      fontSize: 20,
+      fontWeight: "900",
+      marginTop: 9,
+      display: "none",
+    },
+    billingPlanPriceLightDynamic: {
       color: colors.white,
       fontSize: 20,
       fontWeight: "900",

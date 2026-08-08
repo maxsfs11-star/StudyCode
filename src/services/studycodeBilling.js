@@ -1,7 +1,8 @@
 const BILLING_API_URL = (
   process.env.EXPO_PUBLIC_BILLING_API_URL ||
   process.env.EXPO_PUBLIC_API_URL ||
-  "https://studycode-api.onrender.com"
+  // O VM Nexus API é a fonte oficial de planos, valores e pagamentos.
+  "https://vm-nexus-api.onrender.com"
 ).replace(/\/$/, "");
 
 async function request(path, { token, method = "GET", body } = {}) {
@@ -22,6 +23,10 @@ async function request(path, { token, method = "GET", body } = {}) {
   return payload;
 }
 
+export async function getStudyCodeCatalog() {
+  return request("/api/studycode/catalog?productKey=studycode");
+}
+
 export function createPremiumCheckout({ token, student, tenantId }) {
   return request("/api/studycode/billing/checkout-session", {
     method: "POST",
@@ -34,15 +39,32 @@ export function createPremiumCheckout({ token, student, tenantId }) {
         email: student?.email,
       },
     },
-  });
+  }).then((payload) => ({ ...payload, checkoutUrl: payload.checkoutUrl || payload.url }));
 }
 
-export function getSubscriptionStatus(token) {
-  return request("/api/studycode/billing/status", { token });
+export async function getSubscriptionStatus(token) {
+  const payload = await request("/api/studycode/billing/status", { token });
+  const subscription = payload.subscription;
+  return {
+    subscription: subscription ? {
+      ...subscription,
+      planId: subscription.plan_id || subscription.planId || "free",
+      nextBillingAt: subscription.next_billing_at || subscription.nextBillingAt,
+    } : { planId: "free", status: "cancelled" },
+  };
 }
 
-export function getBillingHistory(token) {
-  return request("/api/studycode/billing/history", { token });
+export async function getBillingHistory(token) {
+  const payload = await request("/api/studycode/billing/history", { token });
+  const payments = payload.payments || payload.history || [];
+  return {
+    history: payments.map((payment) => ({
+      ...payment,
+      planId: payment.plan_slug || payment.planId,
+      createdAt: payment.created_at || payment.createdAt,
+      amountCents: Math.round(Number(payment.amount || 0) * 100),
+    })),
+  };
 }
 
 export function cancelPremiumSubscription(token) {
