@@ -51,6 +51,7 @@ export async function getSubscriptionStatus(token) {
       ...subscription,
       planId: subscription.plan_slug || subscription.plan_id || subscription.planId || "free",
       nextBillingAt: subscription.next_billing_at || subscription.nextBillingAt,
+      cancelAtPeriodEnd: subscription.cancel_at_period_end ?? subscription.cancelAtPeriodEnd ?? false,
     } : { planId: "free", status: "cancelled" },
   };
 }
@@ -63,6 +64,8 @@ export async function getBillingHistory(token) {
       ...payment,
       planId: payment.plan_slug || payment.planId,
       createdAt: payment.created_at || payment.createdAt,
+      paidAt: payment.paid_at || payment.paidAt,
+      invoiceId: payment.invoice_id || payment.invoiceId,
       amountCents: Math.round(Number(payment.amount || 0) * 100),
     })),
   };

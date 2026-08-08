@@ -4429,11 +4429,15 @@ function BillingScreen({ profile, authSession, onAuthRefresh, onSessionExpired, 
   const statusLabels = {
     pending: "Pagamento pendente",
     active: "Assinatura ativa",
+    paid: "Pagamento aprovado",
+    past_due: "Pagamento em atraso",
     expired: "Assinatura vencida",
     cancelled: "Sem assinatura ativa",
     failed: "Pagamento recusado",
   };
-  const statusLabel = statusLabels[subscription.status] || "Sem assinatura ativa";
+  const statusLabel = subscription.cancelAtPeriodEnd
+    ? "Cancelamento agendado"
+    : statusLabels[subscription.status] || "Sem assinatura ativa";
 
   return (
     <View style={styles.screen}>
@@ -4452,7 +4456,7 @@ function BillingScreen({ profile, authSession, onAuthRefresh, onSessionExpired, 
             <Text style={styles.billingSectionLabel}>STATUS ATUAL</Text>
             <Text style={styles.billingStatusTitle}>{activePlan?.name || (isPremium ? subscription.planId : "Free")}</Text>
             <Text style={styles.billingStatusText}>{statusLabel}</Text>
-            {!!subscription.nextBillingAt && <Text style={styles.billingMuted}>Próxima cobrança: {new Date(subscription.nextBillingAt).toLocaleDateString("pt-BR")}</Text>}
+            {!!subscription.nextBillingAt && <Text style={styles.billingMuted}>{subscription.cancelAtPeriodEnd ? "Acesso Premium até" : "Próxima cobrança"}: {new Date(subscription.nextBillingAt).toLocaleDateString("pt-BR")}</Text>}
           </View>
         )}
 
@@ -4483,7 +4487,8 @@ function BillingScreen({ profile, authSession, onAuthRefresh, onSessionExpired, 
               <Text style={styles.billingPlanPriceLightDynamic}>R$ {Number(plan.monthly_price).toFixed(2).replace(".", ",")}<Text style={styles.billingPlanPeriodLight}>{isLifetime ? " pagamento único" : "/mês"}</Text></Text>
               <Text style={styles.billingPlanTextLight}>{plan.description || benefits.join(" • ") || "Acesso aos recursos disponíveis neste plano."}</Text>
               {!currentPlan && <Pressable onPress={() => subscribe(plan.slug)} disabled={working} style={({ pressed }) => [styles.billingButton, pressed && styles.pressed]}><Text style={styles.billingButtonText}>{working ? "Abrindo checkout..." : `Assinar ${plan.name}`}</Text></Pressable>}
-              {currentPlan && <Pressable onPress={cancel} disabled={working} style={({ pressed }) => [styles.billingCancelButton, pressed && styles.pressed]}><Text style={styles.billingCancelButtonText}>{working ? "Cancelando..." : "Cancelar assinatura"}</Text></Pressable>}
+              {currentPlan && !subscription.cancelAtPeriodEnd && <Pressable onPress={cancel} disabled={working} style={({ pressed }) => [styles.billingCancelButton, pressed && styles.pressed]}><Text style={styles.billingCancelButtonText}>{working ? "Agendando..." : "Cancelar no fim do período"}</Text></Pressable>}
+              {currentPlan && subscription.cancelAtPeriodEnd && <Text style={styles.billingPlanTextLight}>Renovação desativada. Seu acesso continua até o vencimento.</Text>}
             </LinearGradient>;
           })}
           {paidPlans.length === 0 && <View style={styles.billingPlanCard}><Text style={styles.billingPlanText}>Nenhum plano pago disponível no momento.</Text></View>}
@@ -4496,8 +4501,8 @@ function BillingScreen({ profile, authSession, onAuthRefresh, onSessionExpired, 
         <View style={styles.billingHistoryCard}>
           <Text style={styles.billingSectionLabel}>HISTÓRICO DE PAGAMENTOS</Text>
           {history.length === 0 ? <Text style={styles.billingMuted}>Nenhum pagamento registrado ainda.</Text> : history.map((item, index) => (
-            <View key={`${item.checkoutSessionId || item.createdAt}-${index}`} style={styles.billingHistoryRow}>
-              <View style={{ flex: 1 }}><Text style={styles.billingHistoryTitle}>{item.planId === "premium" ? "Premium" : "Free"}</Text><Text style={styles.billingMuted}>{item.createdAt ? new Date(item.createdAt).toLocaleDateString("pt-BR") : "—"}</Text></View>
+            <View key={`${item.invoiceId || item.checkoutSessionId || item.createdAt}-${index}`} style={styles.billingHistoryRow}>
+              <View style={{ flex: 1 }}><Text style={styles.billingHistoryTitle}>{plans.find((plan) => plan.slug === item.planId)?.name || item.planId || "StudyCode"}</Text><Text style={styles.billingMuted}>{item.paidAt || item.createdAt ? new Date(item.paidAt || item.createdAt).toLocaleDateString("pt-BR") : "—"}</Text></View>
               <Text style={styles.billingHistoryAmount}>R$ {(Number(item.amountCents || 0) / 100).toFixed(2).replace(".", ",")}</Text>
               <Text style={styles.billingHistoryStatus}>{statusLabels[item.status] || item.status}</Text>
             </View>
