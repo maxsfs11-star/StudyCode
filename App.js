@@ -497,6 +497,31 @@ export default function App() {
     }
   }
 
+  // Limpa dados locais da conta anterior ao iniciar uma nova sessão.
+  async function clearLocalUserCache() {
+    try {
+      await AsyncStorage.multiRemove([STORAGE_KEY, PROFILE_KEY]);
+    } catch {
+      // O estado em memória ainda é resetado se o armazenamento falhar.
+    }
+    setProgress(initialProgress);
+    setProfile(initialProfile);
+    setSelectedCourseId("javascript");
+    setSelectedLessonId(javascriptLessons[0].id);
+    setSelectedProjectId("javascript-task-list");
+    setSelectedDictionaryEntryId(programmerDictionary[0].id);
+  }
+
+  async function setAuthenticatedProfile(nextProfile) {
+    const persistedProfile = { ...initialProfile, ...nextProfile };
+    setProfile(persistedProfile);
+    try {
+      await AsyncStorage.setItem(PROFILE_KEY, JSON.stringify(persistedProfile));
+    } catch {
+      // O perfil em memória continua disponível nesta sessão.
+    }
+  }
+
   async function completeOnboarding(details) {
     const { password, ...profileDetails } = details;
     const normalizedEmail = profileDetails.email?.trim().toLowerCase();
@@ -526,6 +551,7 @@ export default function App() {
     }
     if (!auth?.accessToken) return { ok: false, error: authError };
     if (auth?.accessToken) {
+      await clearLocalUserCache();
       setAuthSession(auth);
       try {
         await AsyncStorage.setItem(
@@ -540,7 +566,11 @@ export default function App() {
         // The local profile remains usable if storage is unavailable.
       }
     }
-    await updateProfile({ ...profileDetails, email: normalizedEmail, onboardingCompleted: true });
+    await setAuthenticatedProfile({
+      ...profileDetails,
+      email: normalizedEmail,
+      onboardingCompleted: true,
+    });
     setSelectedCourseId(profileDetails.preferredCourseId ?? "javascript");
     return { ok: true };
   }
@@ -548,6 +578,7 @@ export default function App() {
   async function loginExistingStudent({ email, password }) {
     try {
       const auth = await loginStudent({ email: email.trim().toLowerCase(), password });
+      await clearLocalUserCache();
       await AsyncStorage.setItem(
         AUTH_KEY,
         JSON.stringify({
@@ -557,7 +588,7 @@ export default function App() {
         }),
       );
       setAuthSession(auth);
-      await updateProfile({
+      await setAuthenticatedProfile({
         displayName: auth.student.name || "Estudante",
         email: auth.student.email,
         onboardingCompleted: true,
@@ -585,11 +616,9 @@ export default function App() {
   }
 
   async function returnToLogin() {
-    const nextProfile = { ...profile, onboardingCompleted: false };
-    setProfile(nextProfile);
+    await clearLocalUserCache();
     setAuthSession(null);
     try {
-      await AsyncStorage.setItem(PROFILE_KEY, JSON.stringify(nextProfile));
       await AsyncStorage.removeItem(AUTH_KEY);
     } catch {
       // The app can still return to login during the current session.
@@ -4341,6 +4370,8 @@ function BillingScreen({ profile, authSession, onAuthRefresh, onSessionExpired, 
   }
 
   async function loadBilling() {
+    // Nunca mostre dados da conta anterior enquanto a consulta atualiza.
+    setHistory([]);
     if (!token) {
       setLoading(false);
       setError("Entre na sua conta para consultar a assinatura.");
