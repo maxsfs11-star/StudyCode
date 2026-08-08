@@ -48,7 +48,7 @@ export async function getSubscriptionStatus(token) {
   return {
     subscription: subscription ? {
       ...subscription,
-      planId: subscription.plan_id || subscription.planId || "free",
+      planId: subscription.plan_slug || subscription.plan_id || subscription.planId || "free",
       nextBillingAt: subscription.next_billing_at || subscription.nextBillingAt,
     } : { planId: "free", status: "cancelled" },
   };
