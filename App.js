@@ -841,6 +841,7 @@ export default function App() {
           profile={profile}
           authSession={authSession}
           onAuthRefresh={refreshAuthSession}
+          onSessionExpired={returnToLogin}
           onBack={() => setScreen("home")}
         />
       )}
@@ -4311,12 +4312,13 @@ function DictionaryEntryScreen({ entry, onBack }) {
   );
 }
 
-function BillingScreen({ profile, authSession, onAuthRefresh, onBack }) {
+function BillingScreen({ profile, authSession, onAuthRefresh, onSessionExpired, onBack }) {
   const [subscription, setSubscription] = useState({ planId: "free", status: "cancelled" });
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(true);
   const [working, setWorking] = useState(false);
   const [error, setError] = useState("");
+  const [sessionExpired, setSessionExpired] = useState(false);
   const [checkoutNotice, setCheckoutNotice] = useState("");
   const [plans, setPlans] = useState([]);
 
@@ -4346,23 +4348,37 @@ function BillingScreen({ profile, authSession, onAuthRefresh, onBack }) {
     }
     setLoading(true);
     setError("");
+    setSessionExpired(false);
     try {
-      const [statusResponse, historyResponse, catalogResponse] = await withFreshToken((currentToken) => Promise.all([
+      const [statusResponse, historyResponse] = await withFreshToken((currentToken) => Promise.all([
         getSubscriptionStatus(currentToken),
         getBillingHistory(currentToken),
-        getStudyCodeCatalog(),
       ]));
       setSubscription(statusResponse.subscription || { planId: "free", status: "cancelled" });
       setHistory(historyResponse.history || []);
-      setPlans(catalogResponse.plans || []);
     } catch (requestError) {
-      setError(requestError.message || "O serviço de pagamentos ainda não está configurado.");
+      const sessionExpired = requestError.status === 401;
+      setSessionExpired(sessionExpired);
+      setError(sessionExpired
+        ? "Sua sessão expirou. Entre novamente para assinar ou consultar pagamentos."
+        : requestError.message || "O serviço de pagamentos ainda não está configurado.");
     } finally {
       setLoading(false);
     }
   }
 
+  async function loadCatalog() {
+    try {
+      const catalogResponse = await getStudyCodeCatalog();
+      setPlans(catalogResponse.plans || []);
+    } catch (requestError) {
+      setPlans([]);
+      setError(requestError.message || "Não foi possível carregar os planos do StudyCode.");
+    }
+  }
+
   useEffect(() => {
+    loadCatalog();
     loadBilling();
     const listener = Linking.addEventListener("url", ({ url }) => {
       if (url.includes("billing/success")) {
@@ -4385,7 +4401,9 @@ function BillingScreen({ profile, authSession, onAuthRefresh, onBack }) {
       if (!checkout.checkoutUrl) throw new Error("A Stripe não retornou uma página de checkout.");
       await Linking.openURL(checkout.checkoutUrl);
     } catch (requestError) {
-      setError(requestError.message || "Não foi possível iniciar o checkout.");
+      const expired = requestError.status === 401;
+      setSessionExpired(expired);
+      setError(expired ? "Sua sessão expirou. Entre novamente para continuar." : requestError.message || "Não foi possível iniciar o checkout.");
     } finally {
       setWorking(false);
     }
@@ -4471,7 +4489,7 @@ function BillingScreen({ profile, authSession, onAuthRefresh, onBack }) {
           {paidPlans.length === 0 && <View style={styles.billingPlanCard}><Text style={styles.billingPlanText}>Nenhum plano pago disponível no momento.</Text></View>}
         </View>
 
-        {error ? <View style={styles.billingError}><Text style={styles.billingErrorText}>{error}</Text></View> : null}
+        {error ? <View style={styles.billingError}><Text style={styles.billingErrorText}>{error}</Text>{sessionExpired && <Pressable onPress={onSessionExpired} style={({ pressed }) => [styles.billingRefresh, pressed && styles.pressed]}><Text style={styles.billingRefreshText}>Entrar novamente</Text></Pressable>}</View> : null}
         {checkoutNotice ? <View style={styles.billingNotice}><Text style={styles.billingNoticeText}>{checkoutNotice}</Text></View> : null}
         <Pressable onPress={loadBilling} style={({ pressed }) => [styles.billingRefresh, pressed && styles.pressed]}><Text style={styles.billingRefreshText}>Atualizar status</Text></Pressable>
 
