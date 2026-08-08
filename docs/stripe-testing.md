@@ -1,6 +1,6 @@
 # StudyCode — Stripe em testes
 
-O aplicativo nunca recebe `STRIPE_SECRET_KEY`. A cobrança fica em um serviço separado (`server/billing-api.mjs`) e o app recebe apenas a URL pública do Checkout hospedado.
+O aplicativo nunca recebe `STRIPE_SECRET_KEY`. A cobrança fica no serviço seguro da API (`server/billing-api.mjs`) e o app recebe apenas a URL pública do Checkout hospedado.
 
 ## Variáveis do serviço de cobrança
 
@@ -21,7 +21,7 @@ CORS_ORIGIN=*
 No app Expo, configure somente:
 
 ```env
-EXPO_PUBLIC_BILLING_API_URL=https://<servico-de-cobranca-studycode>.onrender.com
+EXPO_PUBLIC_BILLING_API_URL=https://studycode-api.onrender.com
 ```
 
 Nunca use `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` ou `STRIPE_PRICE_PREMIUM_ID` em `.env` do Expo, `app.json`, `App.js` ou no GitHub.
@@ -31,7 +31,7 @@ Nunca use `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` ou `STRIPE_PRICE_PREMIUM_
 O webhook já existente do VM Nexus continua intacto e pode continuar monitorando os pagamentos. Para liberar o Premium no StudyCode, adicione também um endpoint de webhook para o serviço de cobrança do StudyCode:
 
 ```text
-https://<servico-de-cobranca-studycode>.onrender.com/api/webhooks/stripe
+https://studycode-api.onrender.com/api/webhooks/stripe
 ```
 
 Eventos necessários:

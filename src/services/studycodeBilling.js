@@ -1,7 +1,7 @@
 const BILLING_API_URL = (
   process.env.EXPO_PUBLIC_BILLING_API_URL ||
   process.env.EXPO_PUBLIC_API_URL ||
-  "https://studycode-billing.onrender.com"
+  "https://studycode-api.onrender.com"
 ).replace(/\/$/, "");
 
 async function request(path, { token, method = "GET", body } = {}) {

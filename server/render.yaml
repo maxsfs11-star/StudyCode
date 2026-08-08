@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: studycode-billing
+    name: studycode-api
     runtime: node
     rootDir: server
     buildCommand: npm install
