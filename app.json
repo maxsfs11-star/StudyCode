@@ -1,24 +1,48 @@
 {
   "expo": {
-    "name": "codequest",
+    "name": "StudyCode",
     "slug": "codequest",
-    "version": "1.0.0",
+    "version": "1.0.8",
+    "scheme": "studycode",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
+    "icon": "./assets/branding/studycode-app-icon-cyan.png",
+    "userInterfaceStyle": "dark",
+    "backgroundColor": "#254C70",
     "ios": {
       "supportsTablet": true
     },
     "android": {
+      "package": "com.maxgruum37.studycode",
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/android-icon-foreground.png",
-        "backgroundImage": "./assets/android-icon-background.png",
-        "monochromeImage": "./assets/android-icon-monochrome.png"
+        "backgroundColor": "#078FCA",
+        "foregroundImage": "./assets/branding/studycode-app-icon-cyan.png"
       }
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/branding/studycode-app-icon-cyan.png"
+    },
+    "plugins": [
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#254C70",
+          "image": "./assets/branding/splash-transparent.png",
+          "imageWidth": 1,
+          "resizeMode": "contain"
+        }
+      ]
+    ],
+    "owner": "maxgruum37",
+    "extra": {
+      "eas": {
+        "projectId": "6324f41a-b076-47f8-936a-ff5d2e2f4e62"
+      }
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/6324f41a-b076-47f8-936a-ff5d2e2f4e62"
     }
   }
 }

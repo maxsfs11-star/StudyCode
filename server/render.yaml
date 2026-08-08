@@ -1,0 +1,25 @@
+services:
+  - type: web
+    name: studycode-billing
+    runtime: node
+    rootDir: server
+    buildCommand: npm install
+    startCommand: npm run start:billing
+    healthCheckPath: /health
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: STRIPE_WEBHOOK_SECRET
+        sync: false
+      - key: STRIPE_PRICE_PREMIUM_ID
+        sync: false
+      - key: STRIPE_SUCCESS_URL
+        value: studycode://billing/success
+      - key: STRIPE_CANCEL_URL
+        value: studycode://billing/cancelled
+      - key: CORS_ORIGIN
+        value: "*"

@@ -39,3 +39,12 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+# Local Expo exports and diagnostics
+.expo-export-*/
+dist-*/
+.expo-metro*.log
+tmp/
+server/.env
+server/.env.*
+!server/.env.example
