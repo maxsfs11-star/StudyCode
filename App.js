@@ -12252,7 +12252,7 @@ const styles = StyleSheet.create(
       gap: 16,
     },
     codeCoinHero: {
-      minHeight: 230,
+      minHeight: 260,
       borderRadius: 28,
       padding: 22,
       overflow: "hidden",
@@ -12285,14 +12285,14 @@ const styles = StyleSheet.create(
       marginTop: 9,
     },
     codeCoinArtOuter: {
-      width: 138,
-      height: 138,
+      width: 168,
+      height: 168,
       alignItems: "center",
       justifyContent: "center",
     },
     codeCoinArtImage: {
-      width: 138,
-      height: 138,
+      width: 168,
+      height: 168,
     },
     codeCoinBalanceCard: {
       padding: 20,
