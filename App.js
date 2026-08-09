@@ -4455,6 +4455,7 @@ function BillingScreen({ profile, authSession, onAuthRefresh, onSessionExpired, 
   }
 
   const activePlan = plans.find((plan) => plan.slug === subscription.planId);
+  const freePlan = plans.find((plan) => plan.slug === "free");
   const paidPlans = plans.filter((plan) => Number(plan.monthly_price) > 0);
   const isPremium = subscription.status === "active" && subscription.planId !== "free";
   const statusLabels = {
@@ -4494,7 +4495,7 @@ function BillingScreen({ profile, authSession, onAuthRefresh, onSessionExpired, 
         <View style={styles.billingPlanGrid}>
           <View style={styles.billingPlanCard}>
             <Text style={styles.billingPlanKicker}>GRATUITO</Text>
-            <Text style={styles.billingPlanTitle}>Free</Text>
+            <Text style={styles.billingPlanTitle}>{freePlan?.name || "Free"}</Text>
             <Text style={styles.billingPlanPrice}>R$ 0,00<Text style={styles.billingPlanPeriod}>/mês</Text></Text>
             <Text style={styles.billingPlanText}>HTML, CSS e JavaScript básico, desafios e revisões essenciais.</Text>
           </View>
