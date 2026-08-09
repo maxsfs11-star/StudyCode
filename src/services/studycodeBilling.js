@@ -35,6 +35,24 @@ export async function getStudyCodeCodeCoinBalance(token) {
   return request("/api/studycode/billing/coins/balance", { token });
 }
 
+export function createCodeCoinCheckout({ token, packId, packSlug, tenantId, provider = "stripe" }) {
+  return request("/api/studycode/billing/coins/checkout-session", {
+    method: "POST",
+    token,
+    body: {
+      pack_id: packId || null,
+      pack_slug: packSlug || null,
+      tenant_id: tenantId || null,
+      provider,
+    },
+  }).then((payload) => ({ ...payload, checkoutUrl: payload.checkoutUrl || payload.url }));
+}
+
+export async function getStudyCodeCodeCoinHistory(token) {
+  const payload = await request("/api/studycode/billing/coins/history", { token });
+  return { purchases: payload.purchases || [] };
+}
+
 export function createPremiumCheckout({ token, student, tenantId, planSlug = "premium" }) {
   return request("/api/studycode/billing/checkout-session", {
     method: "POST",

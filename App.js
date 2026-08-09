@@ -49,6 +49,7 @@ import { askMentor } from "./src/services/mentorService";
 import { loginStudent, registerStudent } from "./src/services/studycodeApi";
 import {
   cancelPremiumSubscription,
+  createCodeCoinCheckout,
   createPremiumCheckout,
   getStudyCodeCatalog,
   getStudyCodeCodeCoinCatalog,
@@ -4369,6 +4370,7 @@ function CodeCoinScreen({ authSession, onAuthRefresh, onBack }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  const [purchaseLoading, setPurchaseLoading] = useState(false);
 
   async function withFreshToken(action) {
     try {
@@ -4406,9 +4408,26 @@ function CodeCoinScreen({ authSession, onAuthRefresh, onBack }) {
 
   const selectedPack = packs.find((pack) => (pack.id || pack.slug) === selectedPackId);
 
-  function preparePurchase() {
-    if (!selectedPack) return;
-    setNotice(`O pacote ${selectedPack.name} está selecionado. O checkout seguro será conectado na próxima etapa.`);
+  async function purchaseCodeCoins() {
+    if (!selectedPack || purchaseLoading) return;
+    setPurchaseLoading(true);
+    setError("");
+    setNotice("");
+    try {
+      const checkout = await withFreshToken((token) => createCodeCoinCheckout({
+        token,
+        packId: selectedPack.id,
+        packSlug: selectedPack.slug,
+        provider: "stripe",
+      }));
+      if (!checkout.checkoutUrl) throw new Error("O checkout Stripe não retornou um endereço válido.");
+      await Linking.openURL(checkout.checkoutUrl);
+      setNotice("Checkout seguro aberto. O saldo será atualizado após a confirmação do Stripe.");
+    } catch (requestError) {
+      setError(requestError.message || "Não foi possível abrir o checkout de CodeCoins.");
+    } finally {
+      setPurchaseLoading(false);
+    }
   }
 
   return (
@@ -4473,8 +4492,8 @@ function CodeCoinScreen({ authSession, onAuthRefresh, onBack }) {
           </View>
         )}
 
-        <Pressable disabled={!selectedPack || loading} onPress={preparePurchase} style={({ pressed }) => [styles.codeCoinBuyButton, (!selectedPack || loading) && styles.codeCoinBuyButtonDisabled, pressed && styles.pressed]}>
-          <Text style={styles.codeCoinBuyButtonText}>Comprar CodeCoins</Text>
+        <Pressable disabled={!selectedPack || loading || purchaseLoading} onPress={purchaseCodeCoins} style={({ pressed }) => [styles.codeCoinBuyButton, (!selectedPack || loading || purchaseLoading) && styles.codeCoinBuyButtonDisabled, pressed && styles.pressed]}>
+          <Text style={styles.codeCoinBuyButtonText}>{purchaseLoading ? "Abrindo checkout..." : "Comprar CodeCoins"}</Text>
           <Text style={styles.codeCoinBuyButtonArrow}>→</Text>
         </Pressable>
         {!!notice && <View style={styles.billingNotice}><Text style={styles.billingNoticeText}>{notice}</Text></View>}
