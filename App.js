@@ -818,6 +818,7 @@ export default function App() {
           onOpenReview={() => setScreen("review")}
           onOpenDashboard={() => setScreen("dashboard")}
           onOpenBilling={() => setScreen("billing")}
+          onOpenCodeCoin={() => setScreen("codecoin")}
           onOpenProjects={() => setScreen("projects")}
           onOpenDictionary={() => setScreen("dictionary")}
           onSignOut={returnToLogin}
@@ -873,6 +874,13 @@ export default function App() {
           authSession={authSession}
           onAuthRefresh={refreshAuthSession}
           onSessionExpired={returnToLogin}
+          onBack={() => setScreen("home")}
+        />
+      )}
+      {screen === "codecoin" && (
+        <CodeCoinScreen
+          authSession={authSession}
+          onAuthRefresh={refreshAuthSession}
           onBack={() => setScreen("home")}
         />
       )}
@@ -2332,6 +2340,7 @@ function HomeScreen({
   onOpenReview,
   onOpenDashboard,
   onOpenBilling,
+  onOpenCodeCoin,
   onOpenProjects,
   onOpenDictionary,
   onSignOut,
@@ -2788,6 +2797,15 @@ function HomeScreen({
                     onPress={() => {
                       setAvatarMenuVisible(false);
                       onOpenBilling();
+                    }}
+                  />
+                  <ProfileSettingsRow
+                    icon="CC"
+                    title="CodeCoin"
+                    detail="Saldo, benefícios e pacotes de moedas"
+                    onPress={() => {
+                      setAvatarMenuVisible(false);
+                      onOpenCodeCoin();
                     }}
                   />
                   <ProfileSettingsRow
@@ -3402,6 +3420,27 @@ function HomeScreen({
           </Text>
         </View>
         <Text style={styles.reviewLauncherArrow}>›</Text>
+      </Pressable>
+
+      <Pressable
+        onPress={onOpenCodeCoin}
+        style={({ pressed }) => [styles.codeCoinHomeCard, pressed && styles.pressed]}
+      >
+        <LinearGradient
+          colors={[colors.primaryText, colors.primary, colors.primaryLight]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={StyleSheet.absoluteFill}
+        />
+        <View style={styles.codeCoinHomeIcon}>
+          <Text style={styles.codeCoinHomeIconText}>CC</Text>
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.codeCoinHomeEyebrow}>CARTEIRA STUDYCODE</Text>
+          <Text style={styles.codeCoinHomeTitle}>CodeCoin</Text>
+          <Text style={styles.codeCoinHomeText}>Veja seu saldo, benefícios e pacotes disponíveis.</Text>
+        </View>
+        <Text style={styles.codeCoinHomeArrow}>›</Text>
       </Pressable>
 
       <Pressable
@@ -4343,6 +4382,143 @@ function DictionaryEntryScreen({ entry, onBack }) {
   );
 }
 
+function CodeCoinScreen({ authSession, onAuthRefresh, onBack }) {
+  const [balance, setBalance] = useState(0);
+  const [packs, setPacks] = useState([]);
+  const [selectedPackId, setSelectedPackId] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
+
+  async function withFreshToken(action) {
+    try {
+      return await action(authSession?.accessToken);
+    } catch (requestError) {
+      if (requestError.status !== 401 || !onAuthRefresh) throw requestError;
+      const refreshedToken = await onAuthRefresh();
+      if (!refreshedToken) throw requestError;
+      return action(refreshedToken);
+    }
+  }
+
+  async function loadCodeCoin() {
+    setLoading(true);
+    setError("");
+    try {
+      const [catalog, wallet] = await Promise.all([
+        getStudyCodeCodeCoinCatalog(),
+        withFreshToken((token) => getStudyCodeCodeCoinBalance(token)),
+      ]);
+      const nextPacks = catalog.packs || [];
+      setPacks(nextPacks);
+      setBalance(Number(wallet.balance) || 0);
+      setSelectedPackId((current) => current || nextPacks[0]?.id || nextPacks[0]?.slug || null);
+    } catch (requestError) {
+      setError(requestError.message || "Não foi possível carregar sua carteira CodeCoin.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    loadCodeCoin();
+  }, [authSession?.accessToken]);
+
+  const selectedPack = packs.find((pack) => (pack.id || pack.slug) === selectedPackId);
+
+  function preparePurchase() {
+    if (!selectedPack) return;
+    setNotice(`O pacote ${selectedPack.name} está selecionado. O checkout seguro será conectado na próxima etapa.`);
+  }
+
+  return (
+    <View style={styles.screen}>
+      <ScreenHeader title="CodeCoin" onBack={onBack} />
+      <ScrollView contentContainerStyle={styles.codeCoinContent} showsVerticalScrollIndicator={false}>
+        <LinearGradient colors={[colors.primaryLight, colors.primary, colors.secondary]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.codeCoinHero}>
+          <View style={styles.codeCoinHeroCopy}>
+            <Text style={styles.codeCoinEyebrow}>MOEDA DO STUDYCODE</Text>
+            <Text style={styles.codeCoinHeroTitle}>Aprenda, conquiste e desbloqueie.</Text>
+            <Text style={styles.codeCoinHeroText}>Use CodeCoins para acessar recursos extras sem interromper sua jornada de estudos.</Text>
+          </View>
+          <View style={styles.codeCoinArtOuter}>
+            <View style={styles.codeCoinArtInner}>
+              <Image source={BRAND_ICON} resizeMode="contain" style={styles.codeCoinArtImage} />
+            </View>
+            <Text style={styles.codeCoinArtLabel}>CC</Text>
+          </View>
+        </LinearGradient>
+
+        <View style={styles.codeCoinBalanceCard}>
+          <View>
+            <Text style={styles.codeCoinSectionLabel}>SEU SALDO</Text>
+            <Text style={styles.codeCoinBalanceValue}>{balance.toLocaleString("pt-BR")}</Text>
+            <Text style={styles.codeCoinBalanceCaption}>CodeCoins disponíveis</Text>
+          </View>
+          <Pressable onPress={loadCodeCoin} style={({ pressed }) => [styles.codeCoinRefresh, pressed && styles.pressed]}>
+            <Text style={styles.codeCoinRefreshText}>Atualizar</Text>
+          </Pressable>
+        </View>
+
+        <View style={styles.codeCoinInfoCard}>
+          <Text style={styles.codeCoinSectionLabel}>PARA QUE SERVE?</Text>
+          <Text style={styles.codeCoinInfoTitle}>Mais possibilidades dentro do aprendizado</Text>
+          <View style={styles.codeCoinBenefitRow}><Text style={styles.codeCoinBenefitIcon}>?</Text><Text style={styles.codeCoinBenefitText}>Comprar perguntas extras para o tutor de IA quando seu limite acabar.</Text></View>
+          <View style={styles.codeCoinBenefitRow}><Text style={styles.codeCoinBenefitIcon}>+</Text><Text style={styles.codeCoinBenefitText}>Desbloquear conteúdos especiais, ferramentas e aulas avulsas.</Text></View>
+          <View style={styles.codeCoinBenefitRow}><Text style={styles.codeCoinBenefitIcon}>★</Text><Text style={styles.codeCoinBenefitText}>Participar de recursos e recompensas futuras do StudyCode.</Text></View>
+        </View>
+
+        <View>
+          <Text style={styles.codeCoinSectionLabel}>COMPRAR CODECOINS</Text>
+          <Text style={styles.codeCoinSectionTitle}>Escolha seu pacote</Text>
+        </View>
+
+        {loading ? (
+          <View style={styles.billingLoading}><ActivityIndicator color={colors.primary} /><Text style={styles.billingMuted}>Carregando sua carteira...</Text></View>
+        ) : packs.length === 0 ? (
+          <View style={styles.codeCoinEmpty}><Text style={styles.billingMuted}>Nenhum pacote disponível no momento.</Text></View>
+        ) : (
+          <View style={styles.codeCoinPackGrid}>
+            {packs.map((pack) => {
+              const packKey = pack.id || pack.slug;
+              const selected = packKey === selectedPackId;
+              return (
+                <Pressable key={packKey} onPress={() => { setSelectedPackId(packKey); setNotice(""); }} style={({ pressed }) => [styles.codeCoinPackCard, selected && styles.codeCoinPackCardSelected, pressed && styles.pressed]}>
+                  <View style={styles.codeCoinMiniCoin}><Text style={styles.codeCoinMiniCoinText}>CC</Text></View>
+                  <View style={styles.codeCoinPackCopy}>
+                    <Text style={styles.codeCoinPackName}>{pack.name}</Text>
+                    <Text style={styles.codeCoinPackAmount}>{Number(pack.coin_amount || 0).toLocaleString("pt-BR")} CodeCoins</Text>
+                  </View>
+                  <Text style={styles.codeCoinPackPrice}>R$ {Number(pack.price || 0).toFixed(2).replace(".", ",")}</Text>
+                </Pressable>
+              );
+            })}
+          </View>
+        )}
+
+        <Pressable disabled={!selectedPack || loading} onPress={preparePurchase} style={({ pressed }) => [styles.codeCoinBuyButton, (!selectedPack || loading) && styles.codeCoinBuyButtonDisabled, pressed && styles.pressed]}>
+          <Text style={styles.codeCoinBuyButtonText}>Comprar CodeCoins</Text>
+          <Text style={styles.codeCoinBuyButtonArrow}>→</Text>
+        </Pressable>
+        {!!notice && <View style={styles.billingNotice}><Text style={styles.billingNoticeText}>{notice}</Text></View>}
+        {!!error && <View style={styles.billingError}><Text style={styles.billingErrorText}>{error}</Text></View>}
+
+        <View style={styles.codeCoinHelpCard}>
+          <Text style={styles.codeCoinSectionLabel}>DÚVIDAS E AJUDA</Text>
+          <Text style={styles.codeCoinHelpQuestion}>CodeCoin expira?</Text>
+          <Text style={styles.codeCoinHelpAnswer}>Não. Seu saldo permanece vinculado à sua conta até ser utilizado.</Text>
+          <View style={styles.codeCoinHelpDivider} />
+          <Text style={styles.codeCoinHelpQuestion}>CodeCoin substitui o Premium?</Text>
+          <Text style={styles.codeCoinHelpAnswer}>Não. O Premium libera o plano completo; CodeCoin serve para recursos extras e compras avulsas.</Text>
+          <View style={styles.codeCoinHelpDivider} />
+          <Text style={styles.codeCoinHelpQuestion}>Quando recebo as moedas?</Text>
+          <Text style={styles.codeCoinHelpAnswer}>Somente depois que o servidor confirmar o pagamento com segurança.</Text>
+        </View>
+      </ScrollView>
+    </View>
+  );
+}
+
 function BillingScreen({ profile, authSession, onAuthRefresh, onSessionExpired, onBack }) {
   const [subscription, setSubscription] = useState({ planId: "free", status: "cancelled" });
   const [history, setHistory] = useState([]);
@@ -4352,9 +4528,6 @@ function BillingScreen({ profile, authSession, onAuthRefresh, onSessionExpired, 
   const [sessionExpired, setSessionExpired] = useState(false);
   const [checkoutNotice, setCheckoutNotice] = useState("");
   const [plans, setPlans] = useState([]);
-  const [coinPacks, setCoinPacks] = useState([]);
-  const [coinsLoading, setCoinsLoading] = useState(true);
-  const [coinBalance, setCoinBalance] = useState(0);
 
   const token = authSession?.accessToken;
   const student = authSession?.student || {
@@ -4386,14 +4559,12 @@ function BillingScreen({ profile, authSession, onAuthRefresh, onSessionExpired, 
     setError("");
     setSessionExpired(false);
     try {
-      const [statusResponse, historyResponse, balanceResponse] = await withFreshToken((currentToken) => Promise.all([
+      const [statusResponse, historyResponse] = await withFreshToken((currentToken) => Promise.all([
         getSubscriptionStatus(currentToken),
         getBillingHistory(currentToken),
-        getStudyCodeCodeCoinBalance(currentToken),
       ]));
       setSubscription(statusResponse.subscription || { planId: "free", status: "cancelled" });
       setHistory(historyResponse.history || []);
-      setCoinBalance(Number(balanceResponse.balance) || 0);
     } catch (requestError) {
       const sessionExpired = requestError.status === 401;
       setSessionExpired(sessionExpired);
@@ -4406,23 +4577,13 @@ function BillingScreen({ profile, authSession, onAuthRefresh, onSessionExpired, 
   }
 
   async function loadCatalog() {
-    setCoinsLoading(true);
-    const [plansResult, coinsResult] = await Promise.allSettled([
-      getStudyCodeCatalog(),
-      getStudyCodeCodeCoinCatalog(),
-    ]);
-    if (plansResult.status === "fulfilled") {
-      setPlans(plansResult.value.plans || []);
-    } else {
+    try {
+      const catalogResponse = await getStudyCodeCatalog();
+      setPlans(catalogResponse.plans || []);
+    } catch (requestError) {
       setPlans([]);
-      setError(plansResult.reason?.message || "Não foi possível carregar os planos do StudyCode.");
+      setError(requestError.message || "Não foi possível carregar os planos do StudyCode.");
     }
-    if (coinsResult.status === "fulfilled") {
-      setCoinPacks(coinsResult.value.packs || []);
-    } else {
-      setCoinPacks([]);
-    }
-    setCoinsLoading(false);
   }
 
   useEffect(() => {
@@ -4541,29 +4702,6 @@ function BillingScreen({ profile, authSession, onAuthRefresh, onSessionExpired, 
             </LinearGradient>;
           })}
           {paidPlans.length === 0 && <View style={styles.billingPlanCard}><Text style={styles.billingPlanText}>Nenhum plano pago disponível no momento.</Text></View>}
-        </View>
-
-        <View style={styles.billingHistoryCard}>
-          <Text style={styles.billingSectionLabel}>CODECOIN</Text>
-          <Text style={styles.billingStatusTitle}>Recursos extras para sua jornada</Text>
-          <Text style={styles.billingHistoryAmount}>{coinBalance.toLocaleString("pt-BR")} CodeCoins</Text>
-          <Text style={styles.billingMuted}>Os pacotes são administrados pelo VM Nexus Dashboard. A compra será liberada após a confirmação segura do servidor.</Text>
-          {coinsLoading ? (
-            <ActivityIndicator color={colors.primary} style={{ marginTop: 18 }} />
-          ) : coinPacks.length === 0 ? (
-            <Text style={[styles.billingMuted, { marginTop: 18 }]}>Nenhum pacote disponível no momento.</Text>
-          ) : (
-            <View style={{ gap: 12, marginTop: 18 }}>
-              {coinPacks.map((pack) => (
-                <View key={pack.id || pack.slug} style={{ borderWidth: 1, borderColor: colors.border, borderRadius: 18, padding: 16, backgroundColor: colors.surface }}>
-                  <Text style={styles.billingHistoryTitle}>{pack.name}</Text>
-                  <Text style={styles.billingPlanText}>{Number(pack.coin_amount || 0).toLocaleString("pt-BR")} CodeCoins</Text>
-                  <Text style={styles.billingHistoryAmount}>R$ {Number(pack.price || 0).toFixed(2).replace(".", ",")}</Text>
-                  <Text style={[styles.billingMuted, { marginTop: 6 }]}>Compra segura em breve</Text>
-                </View>
-              ))}
-            </View>
-          )}
         </View>
 
         {error ? <View style={styles.billingError}><Text style={styles.billingErrorText}>{error}</Text>{sessionExpired && <Pressable onPress={onSessionExpired} style={({ pressed }) => [styles.billingRefresh, pressed && styles.pressed]}><Text style={styles.billingRefreshText}>Entrar novamente</Text></Pressable>}</View> : null}
@@ -12130,6 +12268,322 @@ const styles = StyleSheet.create(
       color: colors.text,
       fontSize: 11,
       fontWeight: "800",
+    },
+    codeCoinContent: {
+      padding: 20,
+      paddingBottom: 48,
+      gap: 16,
+    },
+    codeCoinHomeCard: {
+      minHeight: 118,
+      borderRadius: 24,
+      overflow: "hidden",
+      padding: 18,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 14,
+      borderWidth: 1,
+      borderColor: colors.logoGold,
+      ...shadows.primary,
+    },
+    codeCoinHomeIcon: {
+      width: 62,
+      height: 62,
+      borderRadius: 31,
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: colors.logoYellow,
+      borderWidth: 4,
+      borderColor: colors.logoGold,
+    },
+    codeCoinHomeIconText: {
+      color: colors.warningText,
+      fontSize: 16,
+      fontWeight: "900",
+    },
+    codeCoinHomeEyebrow: {
+      color: colors.logoYellow,
+      fontSize: 9,
+      fontWeight: "900",
+      letterSpacing: 1.1,
+    },
+    codeCoinHomeTitle: {
+      color: colors.white,
+      fontSize: 21,
+      fontWeight: "900",
+      marginTop: 3,
+    },
+    codeCoinHomeText: {
+      color: colors.white,
+      opacity: 0.9,
+      fontSize: 12,
+      lineHeight: 17,
+      marginTop: 3,
+    },
+    codeCoinHomeArrow: {
+      color: colors.logoYellow,
+      fontSize: 28,
+      fontWeight: "700",
+    },
+    codeCoinHero: {
+      minHeight: 230,
+      borderRadius: 28,
+      padding: 22,
+      overflow: "hidden",
+      flexDirection: "row",
+      alignItems: "center",
+      ...shadows.primary,
+    },
+    codeCoinHeroCopy: {
+      flex: 1,
+      paddingRight: 8,
+    },
+    codeCoinEyebrow: {
+      color: colors.logoYellow,
+      fontSize: 10,
+      fontWeight: "900",
+      letterSpacing: 1.25,
+    },
+    codeCoinHeroTitle: {
+      color: colors.white,
+      fontSize: 25,
+      lineHeight: 30,
+      fontWeight: "900",
+      marginTop: 8,
+    },
+    codeCoinHeroText: {
+      color: colors.white,
+      opacity: 0.9,
+      fontSize: 13,
+      lineHeight: 19,
+      marginTop: 9,
+    },
+    codeCoinArtOuter: {
+      width: 112,
+      height: 112,
+      borderRadius: 56,
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: colors.logoGold,
+      borderWidth: 5,
+      borderColor: colors.logoYellow,
+      shadowColor: colors.logoYellow,
+      shadowOpacity: 0.6,
+      shadowRadius: 16,
+      shadowOffset: { width: 0, height: 0 },
+      elevation: 9,
+    },
+    codeCoinArtInner: {
+      width: 84,
+      height: 84,
+      borderRadius: 42,
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: colors.primaryText,
+      borderWidth: 2,
+      borderColor: colors.white,
+    },
+    codeCoinArtImage: {
+      width: 62,
+      height: 62,
+    },
+    codeCoinArtLabel: {
+      position: "absolute",
+      bottom: 4,
+      color: colors.warningText,
+      fontSize: 9,
+      fontWeight: "900",
+      letterSpacing: 1,
+    },
+    codeCoinBalanceCard: {
+      padding: 20,
+      borderRadius: 22,
+      backgroundColor: colors.white,
+      borderWidth: 2,
+      borderColor: colors.logoGold,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      ...shadows.card,
+    },
+    codeCoinSectionLabel: {
+      color: colors.primaryText,
+      fontSize: 10,
+      fontWeight: "900",
+      letterSpacing: 1.25,
+    },
+    codeCoinBalanceValue: {
+      color: colors.text,
+      fontSize: 38,
+      fontWeight: "900",
+      marginTop: 3,
+    },
+    codeCoinBalanceCaption: {
+      color: colors.textSecondary,
+      fontSize: 13,
+      fontWeight: "700",
+    },
+    codeCoinRefresh: {
+      paddingHorizontal: 14,
+      paddingVertical: 10,
+      borderRadius: 14,
+      backgroundColor: colors.surfaceElevated,
+    },
+    codeCoinRefreshText: {
+      color: colors.primaryText,
+      fontSize: 12,
+      fontWeight: "900",
+    },
+    codeCoinInfoCard: {
+      padding: 20,
+      borderRadius: 22,
+      backgroundColor: colors.white,
+      borderWidth: 1,
+      borderColor: colors.border,
+      gap: 13,
+      ...shadows.card,
+    },
+    codeCoinInfoTitle: {
+      color: colors.text,
+      fontSize: 20,
+      lineHeight: 25,
+      fontWeight: "900",
+    },
+    codeCoinBenefitRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 12,
+    },
+    codeCoinBenefitIcon: {
+      width: 34,
+      height: 34,
+      borderRadius: 17,
+      textAlign: "center",
+      textAlignVertical: "center",
+      backgroundColor: colors.studyHintBackground,
+      color: colors.warningText,
+      fontSize: 17,
+      fontWeight: "900",
+    },
+    codeCoinBenefitText: {
+      flex: 1,
+      color: colors.textSecondary,
+      fontSize: 13,
+      lineHeight: 19,
+      fontWeight: "700",
+    },
+    codeCoinSectionTitle: {
+      color: colors.text,
+      fontSize: 23,
+      fontWeight: "900",
+      marginTop: 5,
+    },
+    codeCoinPackGrid: {
+      gap: 11,
+    },
+    codeCoinPackCard: {
+      minHeight: 88,
+      padding: 14,
+      borderRadius: 20,
+      backgroundColor: colors.white,
+      borderWidth: 2,
+      borderColor: colors.border,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 12,
+    },
+    codeCoinPackCardSelected: {
+      borderColor: colors.logoGold,
+      backgroundColor: colors.studyHintBackground,
+      ...shadows.card,
+    },
+    codeCoinMiniCoin: {
+      width: 48,
+      height: 48,
+      borderRadius: 24,
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: colors.logoYellow,
+      borderWidth: 3,
+      borderColor: colors.logoGold,
+    },
+    codeCoinMiniCoinText: {
+      color: colors.warningText,
+      fontSize: 13,
+      fontWeight: "900",
+    },
+    codeCoinPackCopy: {
+      flex: 1,
+    },
+    codeCoinPackName: {
+      color: colors.text,
+      fontSize: 15,
+      fontWeight: "900",
+    },
+    codeCoinPackAmount: {
+      color: colors.textSecondary,
+      fontSize: 12,
+      fontWeight: "700",
+      marginTop: 3,
+    },
+    codeCoinPackPrice: {
+      color: colors.primaryText,
+      fontSize: 15,
+      fontWeight: "900",
+    },
+    codeCoinBuyButton: {
+      minHeight: 58,
+      borderRadius: 18,
+      paddingHorizontal: 20,
+      backgroundColor: colors.logoYellow,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      ...shadows.primary,
+    },
+    codeCoinBuyButtonDisabled: {
+      opacity: 0.55,
+    },
+    codeCoinBuyButtonText: {
+      color: colors.text,
+      fontSize: 15,
+      fontWeight: "900",
+    },
+    codeCoinBuyButtonArrow: {
+      color: colors.primaryText,
+      fontSize: 22,
+      fontWeight: "900",
+    },
+    codeCoinEmpty: {
+      padding: 18,
+      borderRadius: 18,
+      backgroundColor: colors.white,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    codeCoinHelpCard: {
+      padding: 20,
+      borderRadius: 22,
+      backgroundColor: colors.surface,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    codeCoinHelpQuestion: {
+      color: colors.text,
+      fontSize: 15,
+      fontWeight: "900",
+      marginTop: 16,
+    },
+    codeCoinHelpAnswer: {
+      color: colors.textSecondary,
+      fontSize: 13,
+      lineHeight: 19,
+      marginTop: 4,
+    },
+    codeCoinHelpDivider: {
+      height: 1,
+      backgroundColor: colors.border,
+      marginTop: 15,
     },
     billingContent: {
       padding: 20,
