@@ -102,6 +102,7 @@ function normalizeCodeAnswer(value) {
 }
 const LOADING_BULB_ART = require("./assets/branding/studycode-bulb-animation.png");
 const BRAND_ICON = require("./assets/branding/studycode-bulb-animation.png");
+const CODECOIN_ART = require("./assets/branding/studycode-codecoin.png");
 const COURSE_CERTIFICATE = require("./assets/animations/course-certificate.json");
 const MEDAL_GOLD = require("./assets/animations/medal-gold.json");
 const MEDAL_SILVER = require("./assets/animations/medal-silver.json");
@@ -4421,10 +4422,7 @@ function CodeCoinScreen({ authSession, onAuthRefresh, onBack }) {
             <Text style={styles.codeCoinHeroText}>Use CodeCoins para acessar recursos extras sem interromper sua jornada de estudos.</Text>
           </View>
           <View style={styles.codeCoinArtOuter}>
-            <View style={styles.codeCoinArtInner}>
-              <Image source={BRAND_ICON} resizeMode="contain" style={styles.codeCoinArtImage} />
-            </View>
-            <Text style={styles.codeCoinArtLabel}>CC</Text>
+            <Image source={CODECOIN_ART} resizeMode="contain" style={styles.codeCoinArtImage} />
           </View>
         </LinearGradient>
 
@@ -12287,41 +12285,14 @@ const styles = StyleSheet.create(
       marginTop: 9,
     },
     codeCoinArtOuter: {
-      width: 112,
-      height: 112,
-      borderRadius: 56,
+      width: 138,
+      height: 138,
       alignItems: "center",
       justifyContent: "center",
-      backgroundColor: colors.logoGold,
-      borderWidth: 5,
-      borderColor: colors.logoYellow,
-      shadowColor: colors.logoYellow,
-      shadowOpacity: 0.6,
-      shadowRadius: 16,
-      shadowOffset: { width: 0, height: 0 },
-      elevation: 9,
-    },
-    codeCoinArtInner: {
-      width: 84,
-      height: 84,
-      borderRadius: 42,
-      alignItems: "center",
-      justifyContent: "center",
-      backgroundColor: colors.primaryText,
-      borderWidth: 2,
-      borderColor: colors.white,
     },
     codeCoinArtImage: {
-      width: 62,
-      height: 62,
-    },
-    codeCoinArtLabel: {
-      position: "absolute",
-      bottom: 4,
-      color: colors.warningText,
-      fontSize: 9,
-      fontWeight: "900",
-      letterSpacing: 1,
+      width: 138,
+      height: 138,
     },
     codeCoinBalanceCard: {
       padding: 20,
