@@ -51,6 +51,7 @@ import {
   cancelPremiumSubscription,
   createPremiumCheckout,
   getStudyCodeCatalog,
+  getStudyCodeCodeCoinCatalog,
   getBillingHistory,
   getSubscriptionStatus,
 } from "./src/services/studycodeBilling";
@@ -4350,6 +4351,8 @@ function BillingScreen({ profile, authSession, onAuthRefresh, onSessionExpired, 
   const [sessionExpired, setSessionExpired] = useState(false);
   const [checkoutNotice, setCheckoutNotice] = useState("");
   const [plans, setPlans] = useState([]);
+  const [coinPacks, setCoinPacks] = useState([]);
+  const [coinsLoading, setCoinsLoading] = useState(true);
 
   const token = authSession?.accessToken;
   const student = authSession?.student || {
@@ -4399,13 +4402,23 @@ function BillingScreen({ profile, authSession, onAuthRefresh, onSessionExpired, 
   }
 
   async function loadCatalog() {
-    try {
-      const catalogResponse = await getStudyCodeCatalog();
-      setPlans(catalogResponse.plans || []);
-    } catch (requestError) {
+    setCoinsLoading(true);
+    const [plansResult, coinsResult] = await Promise.allSettled([
+      getStudyCodeCatalog(),
+      getStudyCodeCodeCoinCatalog(),
+    ]);
+    if (plansResult.status === "fulfilled") {
+      setPlans(plansResult.value.plans || []);
+    } else {
       setPlans([]);
-      setError(requestError.message || "Não foi possível carregar os planos do StudyCode.");
+      setError(plansResult.reason?.message || "Não foi possível carregar os planos do StudyCode.");
     }
+    if (coinsResult.status === "fulfilled") {
+      setCoinPacks(coinsResult.value.packs || []);
+    } else {
+      setCoinPacks([]);
+    }
+    setCoinsLoading(false);
   }
 
   useEffect(() => {
@@ -4524,6 +4537,28 @@ function BillingScreen({ profile, authSession, onAuthRefresh, onSessionExpired, 
             </LinearGradient>;
           })}
           {paidPlans.length === 0 && <View style={styles.billingPlanCard}><Text style={styles.billingPlanText}>Nenhum plano pago disponível no momento.</Text></View>}
+        </View>
+
+        <View style={styles.billingHistoryCard}>
+          <Text style={styles.billingSectionLabel}>CODECOIN</Text>
+          <Text style={styles.billingStatusTitle}>Recursos extras para sua jornada</Text>
+          <Text style={styles.billingMuted}>Os pacotes são administrados pelo VM Nexus Dashboard. A compra será liberada após a confirmação segura do servidor.</Text>
+          {coinsLoading ? (
+            <ActivityIndicator color={colors.primary} style={{ marginTop: 18 }} />
+          ) : coinPacks.length === 0 ? (
+            <Text style={[styles.billingMuted, { marginTop: 18 }]}>Nenhum pacote disponível no momento.</Text>
+          ) : (
+            <View style={{ gap: 12, marginTop: 18 }}>
+              {coinPacks.map((pack) => (
+                <View key={pack.id || pack.slug} style={{ borderWidth: 1, borderColor: colors.border, borderRadius: 18, padding: 16, backgroundColor: colors.surface }}>
+                  <Text style={styles.billingHistoryTitle}>{pack.name}</Text>
+                  <Text style={styles.billingPlanText}>{Number(pack.coin_amount || 0).toLocaleString("pt-BR")} CodeCoins</Text>
+                  <Text style={styles.billingHistoryAmount}>R$ {Number(pack.price || 0).toFixed(2).replace(".", ",")}</Text>
+                  <Text style={[styles.billingMuted, { marginTop: 6 }]}>Compra segura em breve</Text>
+                </View>
+              ))}
+            </View>
+          )}
         </View>
 
         {error ? <View style={styles.billingError}><Text style={styles.billingErrorText}>{error}</Text>{sessionExpired && <Pressable onPress={onSessionExpired} style={({ pressed }) => [styles.billingRefresh, pressed && styles.pressed]}><Text style={styles.billingRefreshText}>Entrar novamente</Text></Pressable>}</View> : null}
