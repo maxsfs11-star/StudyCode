@@ -3423,27 +3423,6 @@ function HomeScreen({
       </Pressable>
 
       <Pressable
-        onPress={onOpenCodeCoin}
-        style={({ pressed }) => [styles.codeCoinHomeCard, pressed && styles.pressed]}
-      >
-        <LinearGradient
-          colors={[colors.primaryText, colors.primary, colors.primaryLight]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={StyleSheet.absoluteFill}
-        />
-        <View style={styles.codeCoinHomeIcon}>
-          <Text style={styles.codeCoinHomeIconText}>CC</Text>
-        </View>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.codeCoinHomeEyebrow}>CARTEIRA STUDYCODE</Text>
-          <Text style={styles.codeCoinHomeTitle}>CodeCoin</Text>
-          <Text style={styles.codeCoinHomeText}>Veja seu saldo, benefícios e pacotes disponíveis.</Text>
-        </View>
-        <Text style={styles.codeCoinHomeArrow}>›</Text>
-      </Pressable>
-
-      <Pressable
         onPress={onOpenDictionary}
         style={({ pressed }) => [
           styles.dictionaryLauncher,
@@ -12273,57 +12252,6 @@ const styles = StyleSheet.create(
       padding: 20,
       paddingBottom: 48,
       gap: 16,
-    },
-    codeCoinHomeCard: {
-      minHeight: 118,
-      borderRadius: 24,
-      overflow: "hidden",
-      padding: 18,
-      flexDirection: "row",
-      alignItems: "center",
-      gap: 14,
-      borderWidth: 1,
-      borderColor: colors.logoGold,
-      ...shadows.primary,
-    },
-    codeCoinHomeIcon: {
-      width: 62,
-      height: 62,
-      borderRadius: 31,
-      alignItems: "center",
-      justifyContent: "center",
-      backgroundColor: colors.logoYellow,
-      borderWidth: 4,
-      borderColor: colors.logoGold,
-    },
-    codeCoinHomeIconText: {
-      color: colors.warningText,
-      fontSize: 16,
-      fontWeight: "900",
-    },
-    codeCoinHomeEyebrow: {
-      color: colors.logoYellow,
-      fontSize: 9,
-      fontWeight: "900",
-      letterSpacing: 1.1,
-    },
-    codeCoinHomeTitle: {
-      color: colors.white,
-      fontSize: 21,
-      fontWeight: "900",
-      marginTop: 3,
-    },
-    codeCoinHomeText: {
-      color: colors.white,
-      opacity: 0.9,
-      fontSize: 12,
-      lineHeight: 17,
-      marginTop: 3,
-    },
-    codeCoinHomeArrow: {
-      color: colors.logoYellow,
-      fontSize: 28,
-      fontWeight: "700",
     },
     codeCoinHero: {
       minHeight: 230,
