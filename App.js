@@ -52,6 +52,7 @@ import {
   createPremiumCheckout,
   getStudyCodeCatalog,
   getStudyCodeCodeCoinCatalog,
+  getStudyCodeCodeCoinBalance,
   getBillingHistory,
   getSubscriptionStatus,
 } from "./src/services/studycodeBilling";
@@ -4353,6 +4354,7 @@ function BillingScreen({ profile, authSession, onAuthRefresh, onSessionExpired, 
   const [plans, setPlans] = useState([]);
   const [coinPacks, setCoinPacks] = useState([]);
   const [coinsLoading, setCoinsLoading] = useState(true);
+  const [coinBalance, setCoinBalance] = useState(0);
 
   const token = authSession?.accessToken;
   const student = authSession?.student || {
@@ -4384,12 +4386,14 @@ function BillingScreen({ profile, authSession, onAuthRefresh, onSessionExpired, 
     setError("");
     setSessionExpired(false);
     try {
-      const [statusResponse, historyResponse] = await withFreshToken((currentToken) => Promise.all([
+      const [statusResponse, historyResponse, balanceResponse] = await withFreshToken((currentToken) => Promise.all([
         getSubscriptionStatus(currentToken),
         getBillingHistory(currentToken),
+        getStudyCodeCodeCoinBalance(currentToken),
       ]));
       setSubscription(statusResponse.subscription || { planId: "free", status: "cancelled" });
       setHistory(historyResponse.history || []);
+      setCoinBalance(Number(balanceResponse.balance) || 0);
     } catch (requestError) {
       const sessionExpired = requestError.status === 401;
       setSessionExpired(sessionExpired);
@@ -4542,6 +4546,7 @@ function BillingScreen({ profile, authSession, onAuthRefresh, onSessionExpired, 
         <View style={styles.billingHistoryCard}>
           <Text style={styles.billingSectionLabel}>CODECOIN</Text>
           <Text style={styles.billingStatusTitle}>Recursos extras para sua jornada</Text>
+          <Text style={styles.billingHistoryAmount}>{coinBalance.toLocaleString("pt-BR")} CodeCoins</Text>
           <Text style={styles.billingMuted}>Os pacotes são administrados pelo VM Nexus Dashboard. A compra será liberada após a confirmação segura do servidor.</Text>
           {coinsLoading ? (
             <ActivityIndicator color={colors.primary} style={{ marginTop: 18 }} />

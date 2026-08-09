@@ -31,6 +31,10 @@ export async function getStudyCodeCodeCoinCatalog() {
   return request("/api/studycode/catalog/coins");
 }
 
+export async function getStudyCodeCodeCoinBalance(token) {
+  return request("/api/studycode/billing/coins/balance", { token });
+}
+
 export function createPremiumCheckout({ token, student, tenantId, planSlug = "premium" }) {
   return request("/api/studycode/billing/checkout-session", {
     method: "POST",
