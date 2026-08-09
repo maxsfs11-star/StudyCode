@@ -12423,18 +12423,14 @@ const styles = StyleSheet.create(
       ...shadows.card,
     },
     codeCoinMiniCoin: {
-      width: 48,
-      height: 48,
-      borderRadius: 24,
+      width: 62,
+      height: 62,
       alignItems: "center",
       justifyContent: "center",
-      backgroundColor: colors.logoYellow,
-      borderWidth: 3,
-      borderColor: colors.logoGold,
     },
     codeCoinMiniCoinImage: {
-      width: 42,
-      height: 42,
+      width: 62,
+      height: 62,
     },
     codeCoinMiniCoinText: {
       color: colors.warningText,
