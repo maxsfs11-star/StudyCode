@@ -4387,14 +4387,19 @@ function CodeCoinScreen({ authSession, onAuthRefresh, onBack }) {
     setLoading(true);
     setError("");
     try {
-      const [catalog, wallet] = await Promise.all([
-        getStudyCodeCodeCoinCatalog(),
-        withFreshToken((token) => getStudyCodeCodeCoinBalance(token)),
-      ]);
+      // O catálogo é público e não deve desaparecer apenas porque a sessão
+      // da carteira expirou. Assim o aluno ainda consegue ver os pacotes.
+      const catalog = await getStudyCodeCodeCoinCatalog();
       const nextPacks = catalog.packs || [];
       setPacks(nextPacks);
-      setBalance(Number(wallet.balance) || 0);
       setSelectedPackId((current) => current || nextPacks[0]?.id || nextPacks[0]?.slug || null);
+
+      try {
+        const wallet = await withFreshToken((token) => getStudyCodeCodeCoinBalance(token));
+        setBalance(Number(wallet.balance) || 0);
+      } catch (walletError) {
+        setError(walletError.message || "Faça login novamente para carregar seu saldo CodeCoin.");
+      }
     } catch (requestError) {
       setError(requestError.message || "Não foi possível carregar sua carteira CodeCoin.");
     } finally {
