@@ -4485,7 +4485,9 @@ function CodeCoinScreen({ authSession, onAuthRefresh, onBack }) {
               const selected = packKey === selectedPackId;
               return (
                 <Pressable key={packKey} onPress={() => { setSelectedPackId(packKey); setNotice(""); }} style={({ pressed }) => [styles.codeCoinPackCard, selected && styles.codeCoinPackCardSelected, pressed && styles.pressed]}>
-                  <View style={styles.codeCoinMiniCoin}><Text style={styles.codeCoinMiniCoinText}>CC</Text></View>
+                  <View style={styles.codeCoinMiniCoin}>
+                    <Image source={CODECOIN_ART} resizeMode="contain" style={styles.codeCoinMiniCoinImage} />
+                  </View>
                   <View style={styles.codeCoinPackCopy}>
                     <Text style={styles.codeCoinPackName}>{pack.name}</Text>
                     <Text style={styles.codeCoinPackAmount}>{Number(pack.coin_amount || 0).toLocaleString("pt-BR")} CodeCoins</Text>
@@ -12429,6 +12431,10 @@ const styles = StyleSheet.create(
       backgroundColor: colors.logoYellow,
       borderWidth: 3,
       borderColor: colors.logoGold,
+    },
+    codeCoinMiniCoinImage: {
+      width: 42,
+      height: 42,
     },
     codeCoinMiniCoinText: {
       color: colors.warningText,
